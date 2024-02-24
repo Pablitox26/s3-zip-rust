@@ -1,5 +1,5 @@
 use actix_web::web;
-use crate::controllers::*;
+use crate::controllers::health_controller;
 
 pub fn health() -> actix_web::Scope {
     web::scope("/health")

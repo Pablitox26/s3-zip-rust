@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse};
 use log::info;
 
-use crate::routes::health_routes::health;
+use crate::routes::health_route::health;
 
 pub fn config(conf: &mut web::ServiceConfig) {
     info!("Configuring routes...");
