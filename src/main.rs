@@ -1,6 +1,8 @@
 mod routes;
+mod controllers;
+mod services;
 
-use actix_web::{middleware::Logger, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
 
 use crate::routes::config::config;
@@ -22,6 +24,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .configure(config)
+            .app_data(web::Data::new(services::health_service::HealthService::new()))
             .wrap(Logger::default())
         })
         .bind(&address)
