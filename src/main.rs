@@ -1,6 +1,8 @@
 mod routes;
 mod controllers;
 mod services;
+mod common;
+mod models;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
