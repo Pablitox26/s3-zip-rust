@@ -1,7 +1,7 @@
 use actix_web::web;
 use crate::controllers::health_controller;
 
-pub fn health() -> actix_web::Scope {
+pub fn health_route() -> actix_web::Scope {
     web::scope("/health")
         .service(
     web::resource("")

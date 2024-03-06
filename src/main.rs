@@ -8,7 +8,7 @@ mod config;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
 
-use crate::{config::aws_config::AwsConfig, routes::config::config};
+use crate::{config::aws_config::AwsConfig, routes::config::config, services::s3_service::S3Service};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -27,13 +27,13 @@ async fn main() -> std::io::Result<()> {
     // Instance client aws
     let aws_config = AwsConfig::init().await.unwrap();
     let client_s3 = aws_config.client_s3();
-    let client_s3_data = web::Data::new(client_s3);
+    let s3_service = web::Data::new(S3Service::new(client_s3));
 
     HttpServer::new(move || {
         App::new()
             .configure(config)
             .app_data(web::Data::new(services::health_service::HealthService::new()))
-            .app_data(client_s3_data.clone())
+            .app_data(s3_service.clone())
             .wrap(Logger::default())
         })
         .bind(&address)
