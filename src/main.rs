@@ -3,11 +3,12 @@ mod controllers;
 mod services;
 mod common;
 mod models;
+mod config;
 
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
 
-use crate::routes::config::config;
+use crate::{config::aws_config::AwsConfig, routes::config::config};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -23,10 +24,16 @@ async fn main() -> std::io::Result<()> {
     let address = format!("{}:{}", host, port);
     println!("🚀 Server started successfully on => {}", address);
 
+    // Instance client aws
+    let aws_config = AwsConfig::init().await.unwrap();
+    let client_s3 = aws_config.client_s3();
+    let client_s3_data = web::Data::new(client_s3);
+
     HttpServer::new(move || {
         App::new()
             .configure(config)
             .app_data(web::Data::new(services::health_service::HealthService::new()))
+            .app_data(client_s3_data.clone())
             .wrap(Logger::default())
         })
         .bind(&address)
