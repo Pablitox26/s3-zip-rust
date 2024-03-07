@@ -1,6 +1,10 @@
-use actix_web::{rt::spawn, web::Json};
+use actix_web::{
+    rt::spawn,
+    web::{Bytes, Json},
+};
 use aws_sdk_s3::primitives::ByteStream;
-use std::{env, error::Error, sync::Arc, time::Duration};
+use std::io::Write;
+use std::{env, error::Error, fs::File, sync::Arc};
 use tokio::sync::mpsc;
 
 use crate::models::file_s3::FileS3;
@@ -17,7 +21,7 @@ impl S3Service {
         S3Service { client, bucket }
     }
 
-    pub async fn download_object(&self, key: String) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub async fn download_object(&self, key: String) -> Result<Bytes, Box<dyn Error>> {
         let response = self
             .client
             .get_object()
@@ -29,7 +33,11 @@ impl S3Service {
 
         let body_stream = response.body.into_inner();
         let stream = ByteStream::new(body_stream);
-        let data = stream.collect().await.map(|data| data.to_vec()).unwrap();
+        let data = stream
+            .collect()
+            .await
+            .map(|data| data.into_bytes())
+            .unwrap();
 
         Ok(data)
     }
@@ -55,21 +63,36 @@ impl S3Service {
                         }
                         Err(err) => eprintln!("Error al descargar objeto {}: {}", &file.key, err),
                     }
-
-                    // Sleep to simulate some work.
-                    tokio::time::sleep(Duration::from_millis(100)).await;
                 }
                 drop(tx);
             }
         });
 
+        let zip_file = File::create("./test-zip")?;
+        let options = zip::write::FileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .unix_permissions(0o755);
+
         let compress_task = spawn(async move {
+            let mut zip = zip::ZipWriter::new(zip_file);
+
             while let Some((name, object_data)) = rx.recv().await {
                 // Receive the message from the first thread.
                 println!("Thread nro 2 receives name: {}", name);
 
-                // Sleep to simulate some work.
-                tokio::time::sleep(Duration::from_millis(200)).await;
+                // Start file in zip
+                if let Err(err) = zip.start_file(&name, options.clone()) {
+                    eprintln!("Error starting file in zip: {}", err);
+                }
+
+                // Write compressed data to zip
+                if let Err(err) = zip.write_all(&object_data) {
+                    eprintln!("Error writing to zip: {}", err);
+                }
+            }
+
+            if let Err(err) = zip.finish() {
+                eprintln!("Error finishing zip file: {}", err);
             }
         });
 
